@@ -7,7 +7,7 @@
     html, body { width: 100vw; height: 100vh; margin: 0; padding: 0; background: #000; overflow: hidden;
       font-family: "FZKai-Z03", "KaiTi", "STKaiti", "楷体", "LXGW WenKai", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
       font-size: 2.3vw; color: #222; font-weight: normal; letter-spacing: 0.08em; line-height: 1.33;
-      text-align: center; text-shadow: none; user-select: none; }
+      text-align: center; user-select: none; }
     .anim-img { width: 100vw; height: 100vh; object-fit: contain; display: block;
       position: fixed; left: 0; top: 0; z-index: 10; opacity: 0; transition: opacity 0.6s cubic-bezier(.4,0,.2,1);
       background: #000; will-change: opacity; }
@@ -15,8 +15,7 @@
       background: #fff; opacity: 1; transition: opacity 0.36s cubic-bezier(.4,0,.2,1); pointer-events: auto;
       user-select: none; display: flex; align-items: center; justify-content: center; flex-direction: column; }
     #transition-text { min-width: 60vw; cursor: pointer; transition: filter 0.25s; font-family: inherit; font-size: 2.5vw;
-      color: inherit; font-weight: inherit; letter-spacing: inherit; line-height: inherit; text-align: inherit;
-      text-shadow: inherit; user-select: none; }
+      color: inherit; font-weight: inherit; letter-spacing: inherit; line-height: inherit; text-align: inherit; }
     #final-panel { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; background: #fff;
       display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; pointer-events: none;
       transition: opacity 0.8s cubic-bezier(.4,0,.2,1); }
@@ -30,21 +29,22 @@
       text-align: inherit; text-shadow: inherit; white-space: pre-line; min-height: 40vh; background: #fff; cursor: pointer; }
     .type-line { font-family: inherit; font-size: inherit; color: inherit; font-weight: inherit; letter-spacing: inherit;
       line-height: inherit; text-align: inherit; text-shadow: inherit; margin: 0.25vw 0; user-select: none; }
-    .scatter-char { display: inline-block; transition: opacity 1s cubic-bezier(.4,0,.2,1), transform 1s cubic-bezier(.4,0,.2,1);
-      will-change: opacity, transform; }
-    .scatter-char.scatter { opacity: 0; transform: translateY(-4vw) scale(1.2) rotate(-13deg); pointer-events: none; }
-    .scatter-line { display: block; width: 100%; text-align: center; margin: 0.25vw 0; }
-    .final-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-      width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      pointer-events: none; z-index: 10; }
-    .final-center .type-line { font-size: 2.6vw; font-weight: bold; margin: 0.8vw 0 0 0; letter-spacing: 0.14em; }
+    .final-fade-char {
+      display: inline-block;
+      opacity: 0;
+      transition: opacity 0.35s cubic-bezier(.4,0,.2,1);
+    }
+    .final-fade-char.show {
+      opacity: 1;
+    }
+    .final-fade-char.fade {
+      opacity: 0;
+    }
     @media (max-width: 800px) {
       html, body, #final-typewriter-box, #final-typewriter-content, #transition-text { font-size: 4vw !important; }
-      .final-center .type-line { font-size: 5vw !important; }
     }
     @media (max-width: 480px) {
       html, body, #final-typewriter-box, #final-typewriter-content, #transition-text { font-size: 5vw !important; }
-      .final-center .type-line { font-size: 6vw !important; }
     }
   </style>
 </head>
@@ -64,7 +64,7 @@
     <div id="final-center-text" class="final-center" style="display:none;"></div>
   </div>
   <script>
-    // 文本内容
+    // 无标点版内容
     const finalText = [
       "我知道你有自己相信的事情",
       "有自己喜欢的东西",
@@ -125,10 +125,63 @@
       {img: anim3, start: 1, end: anim3Count, interval: 40,  prefix: "img3", music: music2, endLines: null, next: showFinalPanelTypewriter}
     ];
 
-    // 标记第三段动画是否需要恢复 music2
     let music2ShouldResume = false;
 
-    // 打字机效果
+    // ====== 最后一屏：一字一字出现，一字一字消散，排版保持原有分行 ======
+    function showFinalPanelTypewriter() {
+      hideAllAnims();
+      finalPanel.style.opacity = "1";
+      finalPanel.style.pointerEvents = "auto";
+      finalContent.innerHTML = "";
+      finalCenterText.style.display = "none";
+
+      // 拼大段文本并把每个字（包括换行）都用span或br包裹
+      let spans = [];
+      finalContent.innerHTML = ""; // 清空
+
+      // 构造所有字的span，遇到\n插入br
+      finalText.forEach((line, idx) => {
+        for (let i = 0; i < line.length; i++) {
+          let span = document.createElement('span');
+          span.className = 'final-fade-char';
+          span.textContent = line[i];
+          finalContent.appendChild(span);
+          spans.push(span);
+        }
+        if (idx !== finalText.length - 1) {
+          finalContent.appendChild(document.createElement('br'));
+        }
+      });
+
+      // 逐字出现
+      let i = 0;
+      function showNextChar() {
+        if (i < spans.length) {
+          spans[i].classList.add('show');
+          i++;
+          setTimeout(showNextChar, 400); // 调整速度
+        } else {
+          setTimeout(() => {
+            // 逐字消散
+            let j = 0;
+            function fadeNextChar() {
+              if (j < spans.length) {
+                spans[j].classList.remove('show');
+                spans[j].classList.add('fade');
+                j++;
+                setTimeout(fadeNextChar, 120); // 消散速度
+              } else {
+                setTimeout(() => { finalContent.innerHTML = ""; }, 800);
+              }
+            }
+            fadeNextChar();
+          }, 2000); // 全部出现后停留2秒
+        }
+      }
+      showNextChar();
+    }
+
+    // 打字机效果（前面用）
     async function typeLines({lines, container, lineClass="type-line", perCharDelay=130, perLineDelay=320, onComplete}) {
       container.innerHTML = "";
       for (let i = 0; i < lines.length; i++) {
@@ -150,20 +203,36 @@
       anim3.style.opacity = "0";
     }
 
+    // --------- 第二段动画音乐提前播放 ---------
+    function startFrameAnimation2() {
+      try {
+        music2.pause();
+        music2.currentTime = 0;
+        music2.volume = 0.18;
+        const playPromise = music2.play();
+        if (playPromise && playPromise.then) {
+          playPromise.then(() => {
+            playFrameAnimation(1);
+          }).catch(() => {
+            playFrameAnimation(1);
+          });
+        } else {
+          playFrameAnimation(1);
+        }
+      } catch(e) {
+        playFrameAnimation(1);
+      }
+    }
+
     function playFrameAnimation(index) {
       const cfg = animConfig[index];
       hideAllAnims();
       cfg.img.style.opacity = "1";
       let cur = cfg.start;
 
-      // 音乐控制关键逻辑
+      // 第一段动画音乐
       if (cfg.music === music1) {
         try { music1.pause(); music1.currentTime = 0; music1.volume = 0.18; music1.play(); } catch(e) {}
-      }
-      // 第二段动画开始，music2从头播放
-      if (cfg.music === music2 && index === 1) {
-        try { music2.pause(); music2.currentTime = 0; music2.volume = 0.18; music2.play(); } catch(e) {}
-        music2ShouldResume = false;
       }
       // 第三段动画开始，music2如果暂停了则继续播放
       if (cfg.music === music2 && index === 2 && music2ShouldResume) {
@@ -206,7 +275,7 @@
           try { music1.pause(); music1.currentTime = 0; } catch(e) {}
         }
         // 第二段结束时暂停music2（不重置currentTime）
-        if (cfg.music === music2 && index === 1) {
+        if (index === 1) {
           try { music2.pause(); } catch(e) {}
           music2ShouldResume = true;
         }
@@ -222,7 +291,6 @@
     }
 
     function startFrameAnimation1() { playFrameAnimation(0); }
-    function startFrameAnimation2() { playFrameAnimation(1); }
     function startFrameAnimation3() { playFrameAnimation(2); }
 
     function showTransitionMaskWithTextLines(lines, cb) {
@@ -262,54 +330,6 @@
       transitionMask.style.opacity = "0";
       transitionMask.style.pointerEvents = "none";
       setTimeout(()=>{transitionMask.style.display="none";}, 400);
-    }
-
-    function showFinalPanelTypewriter() {
-      hideAllAnims();
-      finalPanel.style.opacity = "1";
-      finalPanel.style.pointerEvents = "auto";
-      finalContent.innerHTML = "";
-      finalCenterText.style.display = "none";
-      // 此处 music2 不暂停
-      typeLines({
-        lines: finalText,
-        container: finalContent,
-        lineClass: "type-line",
-        perCharDelay: 110,
-        perLineDelay: 320,
-        onComplete: ()=>{ setTimeout(()=>{ startScatterFinalText(); }, 5000); }
-      });
-    }
-
-    function startScatterFinalText() {
-      const lines = Array.from(finalContent.querySelectorAll('.type-line'));
-      if (lines.length < 1) return;
-      const toScatter = lines;
-      toScatter.forEach(line => {
-        let txt = line.textContent;
-        line.innerHTML = "";
-        for (let i = 0; i < txt.length; ++i) {
-          let span = document.createElement("span");
-          span.className = "scatter-char";
-          span.textContent = txt[i];
-          line.appendChild(span);
-        }
-        line.classList.add("scatter-line");
-      });
-      let chars = [];
-      toScatter.forEach(line => {
-        chars.push(...line.querySelectorAll('.scatter-char'));
-      });
-      let delayPerChar = 280;
-      chars.forEach((span, idx) => {
-        setTimeout(() => {
-          span.classList.add("scatter");
-        }, idx * delayPerChar);
-      });
-      setTimeout(() => {
-        toScatter.forEach(line => line.style.display = "none");
-        finalCenterText.style.display = "none";
-      }, chars.length * delayPerChar + 1000);
     }
 
     window.addEventListener('DOMContentLoaded', () => {
