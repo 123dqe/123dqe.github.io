@@ -246,7 +246,8 @@
         if (stopped) return;
         cfg.img.onload = null;
         cfg.img.onerror = null;
-        cfg.img.src = `${cfg.prefix}(${cur}).jpg`;
+        // 这里改为你的GitHub仓库raw图片地址
+        cfg.img.src = `https://raw.githubusercontent.com/123dqe/123dqe.github.io/main/${cfg.prefix}(${cur}).jpg`;
 
         cfg.img.onload = function() {
           cfg.img.onload = null;
